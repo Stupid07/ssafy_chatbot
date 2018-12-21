@@ -77,46 +77,143 @@ def _crawl_naver_keywords(text, user):
         return locations, jobtypes, edus, works
 
     def saveUserSet(userData):
-        file = open("userData.txt", "wb")
-        pickle.dump(userData, file)
-        file.close()
+        with open("userData.txt", "wb") as file:
+            pickle.dump(userData, file)
 
     def loadUserSet():
-        file = open("userData.txt", "rb")
-        content = pickle.load(file)
+        content = None
+        with open("userData.txt", "rb") as file:
+            content = pickle.load(file)
         return content
 
     # 개발 예정
     # userDAta{'usercode' : [['서울'], ['IT'], ['인턴']] }
-    # if "설정" in text:
-    #     userData = {user : [[],[],[]]}
-    #     userData = loadUserSet()
-    #     if user not in userData:
-    #         userData[user]=[[],[],[]]
-    #     locations, jobtypes, edus, works = preprocess()  # 전처리
-    #     if "추가" in text:
-    #         for location in locations:
-    #             if location in text and location not in userData[user][0]:
-    #                 userData[user][0].append(location)
-    #         for jobtype in jobtypes:
-    #             jobtypeList = jobtype.split('·')
-    #             for jt in jobtypeList:
-    #                 if jt in text and jobtype not in userData[user][1]:
-    #                     userData[user][1].append(jobtype)
-    #                     break
-    #         for work in works:
-    #             if len(work.split()) > 1:
-    #                 if work.split[0].strip().replace('형','') in text:
-    #                     pass
-    #             else:
-    #                 pass
-    #     elif "삭제" in text:
-    #         pass
-    #     saveUserSet(userData)
-    #     return u"<@" + user + ">님의 설정입니다\n"
+    if "설정" in text:
+        userData = loadUserSet()
+        if user not in userData:
+            userData[user]=[[],[],[]]
+        locations, jobtypes, edus, works = preprocess()  # 전처리
+        if "추가" in text:
+            for location in locations:
+                if location in text and location not in userData[user][0]:
+                    userData[user][0].append(location)
+            for jobtype in jobtypes:
+                jobtypeList = jobtype.split('·')
+                for jt in jobtypeList:
+                    if jt in text.upper() and jobtype not in userData[user][1]:
+                        userData[user][1].append(jobtype)
+                        break
+            for work in works:
+                if len(work.split()) > 1:
+                    if work.split[0].strip().replace('형', '') in text and work.split[0].strip().replace('형', '') not in userData[user][2]:
+                        userData[user][2].append(work)
+                else:
+                    if work in text and work not in userData[user][2]:
+                        userData[user][2].append(work)
+        elif "삭제" in text:
+            for location in locations:
+                if location in text and location in userData[user][0]:
+                    userData[user][0].remove(location)
+            for jobtype in jobtypes:
+                jobtypeList = jobtype.split('·')
+                for jt in jobtypeList:
+                    if jt in text.upper() and jobtype in userData[user][1]:
+                        userData[user][1].remove(jobtype)
+                        break
+            for work in works:
+                if len(work.split()) > 1:
+                    if work.split[0].strip().replace('형', '') in text and work.split[0].strip().replace('형', '') in userData[user][2]:
+                        userData[user][2].remove(work)
+                else:
+                    if work in text and work in userData[user][2]:
+                        userData[user][2].remove(work)
+        print(userData[user])
+        dataString = u"<@" + user + "> *님의 설정입니다.* \n"
+        dataString += "*[지역 옵션]* : " +", ".join(userData[user][0]) + "\n"
+        dataString += "*[직무 옵션]* : " +", ".join(userData[user][1]) + "\n"
+        dataString += "*[근무 형태 옵션]* : " +", ".join(userData[user][2]) + "\n"
+        dataString += "*설정을 추가하거나 삭제시 '설정' 키워드와 '추가' 또는 '삭제' 키워드를 같이 입력해 주세요."
+        saveUserSet(userData)
+        return dataString
+
+    elif "내채용" in text or "내 채용" in text or "나의채용" in text or "나의 채용" in text:
+
+        pretext = u"<@" + user + "> *님의" + '실시간 채용 공고* ('  # 제목
+        locations, jobtypes, edus, works = preprocess()  # 전처리
+        url = "http://www.jobkorea.co.kr/starter/?schLocal="
+        # 사용자가 입력한 옵션값을 토대로 URL에 옵션값 추가
+        userData = loadUserSet()
+
+        if len(userData[user][0]) > 0:
+            url += ",".join([locations[location] for location in userData[user][0]])
+
+        url += "&schPart="
+
+        if len(userData[user][1]) > 0:
+            url += ",".join([jobtypes[jobtype] for jobtype in userData[user][1]])
+
+        # EduLevel은 default 값
+        url += "&schMajor=&schEduLevel=&schWork="
+
+        if len(userData[user][2]) > 0:
+            url += ",".join([works[work] for work in userData[user][2]])
+
+        url += "&schCType=&isSaved=1&LinkGubun=0&LinkNo=0&schOrderBy=1&Page=1"
+
+        sourcecode = urllib.request.urlopen(url).read()
+        soup = BeautifulSoup(sourcecode, "html.parser")
+
+        for dataList in userData[user]:
+            pretext += ",".join(dataList) + ", " if len(dataList) > 0 else ""
+
+        if len(userData[user][0] + userData[user][1] + userData[user][2]) > 0:
+            pretext = pretext[:-2] + ")\n"
+        else :
+            pretext = pretext[:-1] + "\n"
+
+        keywords = []
+        names = []
+        titles = []
+        dates = []
+        links = []
+        for name in soup.find_all('a', class_='coLink'):
+            names.append(name.get_text().strip())
+
+        for title in soup.find_all('div', class_='tit'):
+            titles.append(title.find('a', class_='link').get_text().strip())
+            links.append(title.find('a', class_='link')['href'])
+
+        for html_str in soup.find_all('ul', class_='filterList'):
+            for date in html_str.find_all('div', class_='side'):
+                dates.append(
+                    date.get_text().strip().replace('채용시', '').replace('자소서 작성', '').replace('\n', '').replace('즉시지원',
+                                                                                                               '').replace(
+                        '공채자료', ''))
+
+        # 하이퍼 링크 첨부하는 법
+        for i in range(int(len(titles) if len(titles) < 19 else 19)):
+            keyword = {}
+
+            R = str(hex(random.randrange(0, 256)))[2:]
+            G = str(hex(random.randrange(0, 256)))[2:]
+            B = str(hex(random.randrange(0, 256)))[2:]
+
+            # slack message builder 형식에 맞춰서 dictionary 생성
+            keyword["color"] = '#' + R + G + B
+            keyword["title"] = titles[i]
+            keyword["title_link"] = "http://www.jobkorea.co.kr" + links[i]
+            keyword["text"] = "[*{}*] _*|*_ *{}*".format(names[i], dates[i])
+            # 생성된 dictionary를 list에 추가
+            keywords.append(keyword)
+
+        keyword = {"text": "*'채용명령어'*\n키워드를 입력하시면 채용의 자세한 검색 키워드를 알 수 있습니다.",
+                   "thumb_url": "https://lh3.googleusercontent.com/h1O_UBmBw5O4wBQV8H-sizD_gb0hqEwoqayIc7-cqxS--wCXORj3cyadVWo0FU2x7KBa-wIPqw=w128-h128-e365"}
+        keywords.append(keyword)
+        # _event_handler함수에서 구별을 하기 위해 pretext, keywords형식의 튜플로 반환
+        return (pretext, keywords)
 
     # 지역, 직무, 근무형태에 줄 수 있는 옵션값들을 출력
-    if "채용명령어" in text or "채용 명령어" in text:
+    elif "채용명령어" in text or "채용 명령어" in text:
         locations, jobtypes, edus, works = preprocess() # 전처리 과정을 통해 옵션값을 각 dictionary에 저장
 
         location_str="[지역] : "
@@ -371,7 +468,7 @@ def _crawl_naver_keywords(text, user):
             return u"'giphy 검색어' 형태로 입력해주세요.\n"
     # 사용할 수 있는 키워드 출력
     elif "명령" in text:
-        return u"*_[사용할 수 있는 명령어]_ : 명령, 채용, 채용명령어, 통합검색, 음악, 실검, giphy*\n"
+        return u"*_[사용할 수 있는 명령어]_ : 명령, 채용, 채용명령어, 설정, 내채용, 통합검색, 음악, 실검, giphy*\n"
     # 잘못된 입력
     else:
         return u"해당하는 명령어를 입력하지 않으셨습니다. '명령' 을 입력하여 확인하세요.\n"
