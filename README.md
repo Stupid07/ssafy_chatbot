@@ -1,33 +1,32 @@
-#hello
+slack chatbot
+===
+## 요약
 
-##hello
+## requirements
+- python 3.7
+- numpy
+- click==6.7
+- Flask==0.12.2
+- itsdangerous==0.24
+- Jinja2==2.9.6
+- MarkupSafe==1.0
+- pyaml==16.9.0
+- PyYAML ==3.12
+- requests-oauthlib==0.8.0
+- requests==2.18.4
+- six==1.10.0
+- slackclient==1.0.2
+- websocket-client==0.37.0  
+- Werkzeug==0.12.2  
+- beautifulsoup4==4.6.3  
 
-###hello
+## 설명
+설명
 
-####hello
+## 시연
 
-#####hello
 
-######hello
-
-######hello
-
-- 목록
-    - 컴퓨터
-        - **삼성**
-        - 'LG'
-    - 노트북
-
-- 목차
-1. 안녕
-2. hello
-3. ?
-
-[test]("127.0.0.1")
-![image](https://user-images.githubusercontent.com/35564566/50328267-c9e2cb80-0535-11e9-84c1-0f28b8a86b81.png)
-
-|이름|성적|
-|----|----|
-|졸려|0000|
-|배고팡|1000|
-|집에가고싶|ㅠ|
+  
+  
+## Reference
+- 참조
